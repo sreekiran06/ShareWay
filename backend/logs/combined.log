@@ -1,0 +1,2 @@
+{"level":"info","message":"🚀 ShareWay server running on port 5000 in undefined mode","service":"shareway-api","timestamp":"2026-04-08 17:57:27"}
+{"level":"info","message":"✅ MongoDB connected: localhost","service":"shareway-api","timestamp":"2026-04-08 17:57:27"}
