@@ -1,0 +1,13 @@
+{
+    "version": 2,
+    "buildCommand": "npm install && chmod +x node_modules/.bin/vite && npx vite build",
+    "outputDirectory": "dist",
+    "installCommand": "npm install",
+    "framework": "vite",
+    "rewrites": [
+        {
+            "source": "/(.*)",
+            "destination": "/index.html"
+        }
+    ]
+}
