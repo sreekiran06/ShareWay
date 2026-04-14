@@ -152,10 +152,46 @@ exports.logout = async (req, res) => {
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
 
-// Google OAuth — handles token from frontend Google Sign-In
+const https = require('https');
+
+// Google OAuth — securely verifies token from frontend
 exports.googleAuth = async (req, res) => {
   try {
-    const { token, name, email, avatar, googleId } = req.body;
+    const { accessToken, role } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({ success: false, message: 'Google access token is required' });
+    }
+
+    // Securely fetch user info from Google
+    const userInfo = await new Promise((resolve, reject) => {
+      const options = {
+        hostname: 'www.googleapis.com',
+        path: '/oauth2/v3/userinfo',
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'User-Agent': 'Node.js'
+        }
+      };
+
+      const request = https.request(options, (response) => {
+        let data = '';
+        response.on('data', chunk => data += chunk);
+        response.on('end', () => {
+          if (response.statusCode === 200) {
+            resolve(JSON.parse(data));
+          } else {
+            reject(new Error(`Google API responded with ${response.statusCode}`));
+          }
+        });
+      });
+
+      request.on('error', reject);
+      request.end();
+    });
+
+    const { email, name, picture } = userInfo;
 
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email is required from Google auth' });
@@ -172,28 +208,29 @@ exports.googleAuth = async (req, res) => {
         email,
         phone: fakePhone,
         password: require('crypto').randomBytes(32).toString('hex'), // random unguessable password
-        avatar,
-        role: 'user',
+        avatar: picture,
+        role: role === 'driver' ? 'driver' : 'user',
+        isGoogleAuth: true,
         isVerified: true,
         isActive: true
       });
     } else {
       // Update avatar if changed
-      if (avatar && !user.avatar) {
-        user.avatar = avatar;
+      if (picture && !user.avatar) {
+        user.avatar = picture;
       }
       user.lastLogin = Date.now();
       await user.save({ validateBeforeSave: false });
     }
 
     logger.info(`Google auth login: ${user.email}`);
-    sendTokenResponse(user, 200, res, 'Google login successful');
+    sendTokenResponse(user, user.isNew ? 201 : 200, res, 'Google login successful');
   } catch (error) {
     logger.error(`Google auth error: ${error.message}`);
     if (error.code === 11000) {
       // Duplicate phone — retry with different placeholder
       return res.status(400).json({ success: false, message: 'Account already exists. Please login with email/password.' });
     }
-    res.status(500).json({ success: false, message: 'Google authentication failed' });
+    res.status(500).json({ success: false, message: 'Google authentication failed', error: error.message });
   }
 };
