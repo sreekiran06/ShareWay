@@ -1,5 +1,3 @@
-// src/server.js
-
 require("dotenv").config();
 
 const express = require("express");
@@ -10,7 +8,6 @@ const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
 
-// Your modules
 const connectDB = require("./config/database");
 const { initializeSocket } = require("./socket/socketHandler");
 
@@ -27,68 +24,55 @@ const notificationRoutes = require("./routes/notifications");
 const app = express();
 const server = http.createServer(app);
 
-/**
- * IMPORTANT for deployments behind a proxy (like Render)
- * Fixes express-rate-limit + X-Forwarded-For issues
- */
+/* IMPORTANT FOR RENDER */
 app.set("trust proxy", 1);
 
-/**
- * Socket.io
- */
+/* SOCKET.IO */
 const io = initializeSocket(server);
 app.set("io", io);
 
-/**
- * Connect DB
- */
+/* DATABASE */
 connectDB();
 
-/**
- * Security headers
- * allow Google popup login
- */
+/* SECURITY HEADERS */
 app.use(
   helmet({
     crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
   })
 );
 
-/**
- * CORS configuration
- * Allows Vercel frontend + local dev
- */
+/* CORS CONFIGURATION */
 const allowedOrigins = [
+  "https://share-way.vercel.app",
   "http://localhost:5173",
-  "http://localhost:3000",
-  "https://share-way.vercel.app"
+  "http://localhost:3000"
 ];
 
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin) return callback(null, true);
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
 
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
-    if (origin.endsWith(".vercel.app")) {
-      return callback(null, true);
-    }
+      if (origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
 
-    callback(null, false);
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"]
-};
+      callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
 
-app.use(cors(corsOptions));
-app.options("*", cors(corsOptions));
+/* HANDLE PREFLIGHT */
+app.options("*", cors());
 
-/**
- * Rate limiter
- */
+/* RATE LIMIT */
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -98,27 +82,19 @@ const limiter = rateLimit({
 
 app.use("/api", limiter);
 
-/**
- * Body parser
- */
+/* BODY PARSER */
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-/**
- * Logger
- */
+/* LOGGER */
 if (process.env.NODE_ENV !== "test") {
   app.use(morgan("dev"));
 }
 
-/**
- * Static files
- */
+/* STATIC FILES */
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-/**
- * Health check route
- */
+/* HEALTH CHECK */
 app.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
@@ -127,9 +103,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-/**
- * API Routes
- */
+/* ROUTES */
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/drivers", driverRoutes);
@@ -139,9 +113,7 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-/**
- * 404 handler
- */
+/* 404 */
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -149,11 +121,9 @@ app.use((req, res) => {
   });
 });
 
-/**
- * Global error handler
- */
+/* GLOBAL ERROR HANDLER */
 app.use((err, req, res, next) => {
-  console.error("ERROR:", err);
+  console.error(err);
 
   res.status(err.status || 500).json({
     success: false,
@@ -161,9 +131,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-/**
- * Start server
- */
+/* START SERVER */
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
