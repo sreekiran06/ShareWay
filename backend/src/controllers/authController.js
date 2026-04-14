@@ -158,15 +158,15 @@ const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 // Google OAuth — securely verifies ID token from frontend
 exports.googleAuth = async (req, res) => {
   try {
-    const { token, role } = req.body;
+    const { credential, role } = req.body;
 
-    if (!token) {
-      return res.status(400).json({ success: false, message: 'Google ID token is required' });
+    if (!credential) {
+      return res.status(400).json({ success: false, message: 'Google ID token (credential) is required' });
     }
 
     // Securely verify ID token using google-auth-library
     const ticket = await client.verifyIdToken({
-      idToken: token,
+      idToken: credential,
       audience: process.env.GOOGLE_CLIENT_ID
     });
 

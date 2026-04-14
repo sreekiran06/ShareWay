@@ -51,11 +51,7 @@ export default function LoginPage() {
       const payload = JSON.parse(atob(base64.replace(/-/g, '+').replace(/_/g, '/')));
 
       const { data } = await api.post('/auth/google', {
-        token: response.credential,
-        name: payload.name,
-        email: payload.email,
-        avatar: payload.picture,
-        googleId: payload.sub,
+        credential: response.credential,
       });
 
       // Store token and user in zustand

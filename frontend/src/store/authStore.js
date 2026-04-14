@@ -54,10 +54,10 @@ const useAuthStore = create(
         }
       },
 
-      googleAuth: async (accessToken, role = 'user') => {
+      googleAuth: async (credential, role = 'user') => {
         set({ isLoading: true });
         try {
-          const { data } = await api.post('/auth/google', { accessToken, role });
+          const { data } = await api.post('/auth/google', { credential, role });
           set({
             user: data.user,
             token: data.token,
