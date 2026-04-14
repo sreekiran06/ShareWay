@@ -4,6 +4,7 @@ import { Toaster } from 'react-hot-toast';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import useAuthStore from './store/authStore';
 import { connectSocket, disconnectSocket } from './services/socket';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // Layouts
 import PublicLayout from './components/common/PublicLayout';
@@ -67,62 +68,64 @@ export default function App() {
   }, [isAuthenticated, token]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Routes>
-          {/* Auth Routes */}
-          <Route path="/auth" element={<PublicLayout />}>
-            <Route path="login" element={<GuestRoute><LoginPage /></GuestRoute>} />
-            <Route path="register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
-          </Route>
+    <GoogleOAuthProvider clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <Routes>
+            {/* Auth Routes */}
+            <Route path="/auth" element={<PublicLayout />}>
+              <Route path="login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+              <Route path="register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+            </Route>
 
-          {/* User/Rider Routes */}
-          <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
-            <Route index element={<HomePage />} />
-            <Route path="book-ride" element={<BookRidePage />} />
-            <Route path="ride/:id" element={<RideTrackingPage />} />
-            <Route path="send-package" element={<SendPackagePage />} />
-            <Route path="delivery/:id" element={<DeliveryTrackingPage />} />
-            <Route path="history" element={<RideHistoryPage />} />
-            <Route path="profile" element={<ProfilePage />} />
-            <Route path="driver/register" element={<DriverRegisterPage />} />
-          </Route>
+            {/* User/Rider Routes */}
+            <Route path="/" element={<ProtectedRoute><DashboardLayout /></ProtectedRoute>}>
+              <Route index element={<HomePage />} />
+              <Route path="book-ride" element={<BookRidePage />} />
+              <Route path="ride/:id" element={<RideTrackingPage />} />
+              <Route path="send-package" element={<SendPackagePage />} />
+              <Route path="delivery/:id" element={<DeliveryTrackingPage />} />
+              <Route path="history" element={<RideHistoryPage />} />
+              <Route path="profile" element={<ProfilePage />} />
+              <Route path="driver/register" element={<DriverRegisterPage />} />
+            </Route>
 
-          {/* Driver Routes */}
-          <Route path="/driver" element={<ProtectedRoute allowedRoles={['driver']}><DriverLayout /></ProtectedRoute>}>
-            <Route index element={<DriverDashboardPage />} />
-            <Route path="rides" element={<DriverRidesPage />} />
-            <Route path="earnings" element={<DriverEarningsPage />} />
-          </Route>
+            {/* Driver Routes */}
+            <Route path="/driver" element={<ProtectedRoute allowedRoles={['driver']}><DriverLayout /></ProtectedRoute>}>
+              <Route index element={<DriverDashboardPage />} />
+              <Route path="rides" element={<DriverRidesPage />} />
+              <Route path="earnings" element={<DriverEarningsPage />} />
+            </Route>
 
-          {/* Admin Routes */}
-          <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
-            <Route index element={<AdminDashboardPage />} />
-            <Route path="users" element={<AdminUsersPage />} />
-            <Route path="drivers" element={<AdminDriversPage />} />
-            <Route path="rides" element={<AdminRidesPage />} />
-          </Route>
+            {/* Admin Routes */}
+            <Route path="/admin" element={<ProtectedRoute allowedRoles={['admin']}><AdminLayout /></ProtectedRoute>}>
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="drivers" element={<AdminDriversPage />} />
+              <Route path="rides" element={<AdminRidesPage />} />
+            </Route>
 
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </BrowserRouter>
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
 
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            fontFamily: '"DM Sans", sans-serif',
-            borderRadius: '16px',
-            padding: '14px 18px',
-            fontSize: '14px',
-            fontWeight: 500,
-            boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
-          },
-          success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
-          error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } }
-        }}
-      />
-    </QueryClientProvider>
+        <Toaster
+          position="top-right"
+          toastOptions={{
+            duration: 4000,
+            style: {
+              fontFamily: '"DM Sans", sans-serif',
+              borderRadius: '16px',
+              padding: '14px 18px',
+              fontSize: '14px',
+              fontWeight: 500,
+              boxShadow: '0 8px 32px rgba(0,0,0,0.12)'
+            },
+            success: { iconTheme: { primary: '#10b981', secondary: '#fff' } },
+            error: { iconTheme: { primary: '#ef4444', secondary: '#fff' } }
+          }}
+        />
+      </QueryClientProvider>
+    </GoogleOAuthProvider>
   );
 }

@@ -54,6 +54,25 @@ const useAuthStore = create(
         }
       },
 
+      googleAuth: async (accessToken, role = 'user') => {
+        set({ isLoading: true });
+        try {
+          const { data } = await api.post('/auth/google', { accessToken, role });
+          set({
+            user: data.user,
+            token: data.token,
+            refreshToken: data.refreshToken,
+            isAuthenticated: true,
+            isLoading: false
+          });
+          api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+          return { success: true, user: data.user };
+        } catch (error) {
+          set({ isLoading: false });
+          return { success: false, message: error.response?.data?.message || 'Google Auth failed' };
+        }
+      },
+
       logout: async () => {
         try { await api.post('/auth/logout'); } catch (_) {}
         delete api.defaults.headers.common['Authorization'];

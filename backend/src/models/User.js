@@ -18,16 +18,19 @@ const userSchema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: [true, 'Phone number is required'],
     unique: true,
+    sparse: true,
     trim: true,
     match: [/^[+]?[0-9]{10,15}$/, 'Please provide a valid phone number']
   },
   password: {
     type: String,
-    required: [true, 'Password is required'],
     minlength: [8, 'Password must be at least 8 characters'],
     select: false
+  },
+  isGoogleAuth: {
+    type: Boolean,
+    default: false
   },
   avatar: {
     type: String,
