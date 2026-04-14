@@ -152,46 +152,26 @@ exports.logout = async (req, res) => {
   res.status(200).json({ success: true, message: 'Logged out successfully' });
 };
 
-const https = require('https');
+const { OAuth2Client } = require('google-auth-library');
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// Google OAuth — securely verifies token from frontend
+// Google OAuth — securely verifies ID token from frontend
 exports.googleAuth = async (req, res) => {
   try {
-    const { accessToken, role } = req.body;
+    const { token, role } = req.body;
 
-    if (!accessToken) {
-      return res.status(400).json({ success: false, message: 'Google access token is required' });
+    if (!token) {
+      return res.status(400).json({ success: false, message: 'Google ID token is required' });
     }
 
-    // Securely fetch user info from Google
-    const userInfo = await new Promise((resolve, reject) => {
-      const options = {
-        hostname: 'www.googleapis.com',
-        path: '/oauth2/v3/userinfo',
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-          'User-Agent': 'Node.js'
-        }
-      };
-
-      const request = https.request(options, (response) => {
-        let data = '';
-        response.on('data', chunk => data += chunk);
-        response.on('end', () => {
-          if (response.statusCode === 200) {
-            resolve(JSON.parse(data));
-          } else {
-            reject(new Error(`Google API responded with ${response.statusCode}`));
-          }
-        });
-      });
-
-      request.on('error', reject);
-      request.end();
+    // Securely verify ID token using google-auth-library
+    const ticket = await client.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID
     });
 
-    const { email, name, picture } = userInfo;
+    const payload = ticket.getPayload();
+    const { email, name, picture } = payload;
 
     if (!email) {
       return res.status(400).json({ success: false, message: 'Email is required from Google auth' });
@@ -201,7 +181,6 @@ exports.googleAuth = async (req, res) => {
     let user = await User.findOne({ email });
 
     if (!user) {
-      // Auto-generate a phone placeholder (can be updated later)
       const fakePhone = '+91' + Math.floor(7000000000 + Math.random() * 2999999999);
       user = await User.create({
         name: name || email.split('@')[0],
@@ -215,7 +194,6 @@ exports.googleAuth = async (req, res) => {
         isActive: true
       });
     } else {
-      // Update avatar if changed
       if (picture && !user.avatar) {
         user.avatar = picture;
       }
@@ -228,7 +206,6 @@ exports.googleAuth = async (req, res) => {
   } catch (error) {
     logger.error(`Google auth error: ${error.message}`);
     if (error.code === 11000) {
-      // Duplicate phone — retry with different placeholder
       return res.status(400).json({ success: false, message: 'Account already exists. Please login with email/password.' });
     }
     res.status(500).json({ success: false, message: 'Google authentication failed', error: error.message });
