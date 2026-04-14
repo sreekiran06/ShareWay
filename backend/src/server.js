@@ -34,7 +34,9 @@ app.set('io', io);
 connectDB();
 
 // Security Middleware
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false,
+}));
 app.use(cors({
   origin: [
     'https://share-way.vercel.app',
