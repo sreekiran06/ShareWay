@@ -37,7 +37,7 @@ connectDB();
 /* SECURITY HEADERS */
 app.use(
   helmet({
-    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
+    crossOriginOpenerPolicy: false  // ✅ FIXED: allows Google OAuth popup to communicate back
   })
 );
 
@@ -48,29 +48,21 @@ const allowedOrigins = [
   "http://localhost:3000"
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    if (origin.endsWith(".vercel.app")) return callback(null, true);
+    callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+app.use(cors(corsOptions));
 
-      if (origin.endsWith(".vercel.app")) {
-        return callback(null, true);
-      }
-
-      callback(null, false);
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
-
-/* HANDLE PREFLIGHT */
-app.options("*", cors());
+// ✅ FIXED: removed bare `app.options("*", cors())` which was overriding the config above
 
 /* RATE LIMIT */
 const limiter = rateLimit({
@@ -124,7 +116,6 @@ app.use((req, res) => {
 /* GLOBAL ERROR HANDLER */
 app.use((err, req, res, next) => {
   console.error(err);
-
   res.status(err.status || 500).json({
     success: false,
     message: err.message || "Internal Server Error"
