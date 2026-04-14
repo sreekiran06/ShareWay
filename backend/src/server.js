@@ -37,14 +37,12 @@ connectDB();
 app.use(helmet());
 app.use(cors({
   origin: [
-    process.env.FRONTEND_URL,
     'https://share-way.vercel.app',
     'http://localhost:5173'
-  ].filter(Boolean),
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  ],
+  credentials: true
 }));
+app.options('*', cors());
 
 // Rate Limiting
 const limiter = rateLimit({
