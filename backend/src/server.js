@@ -1,176 +1,125 @@
-const express = require('express');
-const http = require('http');
-const cors = require('cors');
-const helmet = require('helmet');
-const morgan = require('morgan');
-const rateLimit = require('express-rate-limit');
-const path = require('path');
-require('dotenv').config();
+const express = require("express");
+const http = require("http");
+const cors = require("cors");
+const helmet = require("helmet");
+const morgan = require("morgan");
+const rateLimit = require("express-rate-limit");
+const path = require("path");
+require("dotenv").config();
 
-const connectDB = require('./config/database');
-const { initializeSocket } = require('./socket/socketHandler');
-const logger = require('./utils/logger');
+const connectDB = require("./config/database");
+const { initializeSocket } = require("./socket/socketHandler");
+const logger = require("./utils/logger");
 
-// Route imports
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const driverRoutes = require('./routes/drivers');
-const rideRoutes = require('./routes/rides');
-const deliveryRoutes = require('./routes/deliveries');
-const paymentRoutes = require('./routes/payments');
-const adminRoutes = require('./routes/admin');
-const notificationRoutes = require('./routes/notifications');
+// Routes
+const authRoutes = require("./routes/auth");
+const userRoutes = require("./routes/users");
+const driverRoutes = require("./routes/drivers");
+const rideRoutes = require("./routes/rides");
+const deliveryRoutes = require("./routes/deliveries");
+const paymentRoutes = require("./routes/payments");
+const adminRoutes = require("./routes/admin");
+const notificationRoutes = require("./routes/notifications");
 
 const app = express();
 const server = http.createServer(app);
 
+/* IMPORTANT FIX FOR RENDER */
+app.set("trust proxy", 1);
 
-// ==========================
-// TRUST PROXY (IMPORTANT)
-// ==========================
-// Required for Render / Vercel / any proxy hosting
-app.set('trust proxy', 1);
-
-
-// ==========================
-// SOCKET INITIALIZATION
-// ==========================
-
+/* SOCKET.IO */
 const io = initializeSocket(server);
-app.set('io', io);
+app.set("io", io);
 
-
-// ==========================
-// DATABASE CONNECTION
-// ==========================
-
+/* DATABASE */
 connectDB();
 
-
-// ==========================
-// SECURITY MIDDLEWARE
-// ==========================
-
+/* SECURITY */
 app.use(
   helmet({
-    crossOriginOpenerPolicy: { policy: 'unsafe-none' }  // ← was 'same-origin-allow-popups'
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
   })
 );
 
-
-// ==========================
-// CORS CONFIGURATION
-// ==========================
-
+/* CORS CONFIGURATION */
 const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:3000',
-  process.env.FRONTEND_URL,
-  process.env.FRONTEND_URL_2
-].filter(Boolean);
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://share-way.vercel.app"
+];
 
-const corsOptions = {
-  origin: (origin, callback) => {
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
 
-    if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
 
-    if (origin.endsWith('.vercel.app')) return callback(null, true);
-    if (origin.endsWith('.onrender.com')) return callback(null, true);
+      if (origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
 
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(null, false);
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
+  })
+);
 
-    return callback(new Error('CORS blocked: ' + origin));
-  },
+/* HANDLE PREFLIGHT */
+app.options("*", cors());
 
-  credentials: true,
-
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-
-  allowedHeaders: ['Content-Type', 'Authorization'],
-
-  optionsSuccessStatus: 200
-};
-
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
-
-
-// ==========================
-// RATE LIMITER
-// ==========================
-
+/* RATE LIMITER */
 const limiter = rateLimit({
-  windowMs: (parseInt(process.env.RATE_LIMIT_WINDOW) || 15) * 60 * 1000,
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
+  windowMs: 15 * 60 * 1000,
+  max: 100,
   message: {
     success: false,
-    message: 'Too many requests, please try again later.'
+    message: "Too many requests, please try again later."
   }
 });
 
-app.use('/api/', limiter);
+app.use("/api", limiter);
 
+/* BODY PARSER */
+app.use(express.json({ limit: "10mb" }));
+app.use(express.urlencoded({ extended: true }));
 
-// ==========================
-// BODY PARSER
-// ==========================
-
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-
-// ==========================
-// REQUEST LOGGING
-// ==========================
-
-if (process.env.NODE_ENV !== 'test') {
+/* LOGGER */
+if (process.env.NODE_ENV !== "test") {
   app.use(
-    morgan('combined', {
-      stream: { write: msg => logger.info(msg.trim()) }
+    morgan("combined", {
+      stream: { write: (msg) => logger.info(msg.trim()) }
     })
   );
 }
 
+/* STATIC FILES */
+app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-// ==========================
-// STATIC FILES
-// ==========================
-
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-
-
-// ==========================
-// HEALTH CHECK
-// ==========================
-
-app.get('/health', (req, res) => {
-  res.status(200).json({
+/* HEALTH CHECK */
+app.get("/health", (req, res) => {
+  res.json({
     success: true,
-    message: 'ShareWay API is running',
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    message: "ShareWay API is running",
+    time: new Date()
   });
 });
 
+/* ROUTES */
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/drivers", driverRoutes);
+app.use("/api/rides", rideRoutes);
+app.use("/api/deliveries", deliveryRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/notifications", notificationRoutes);
 
-// ==========================
-// API ROUTES
-// ==========================
-
-app.use('/api/auth', authRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/drivers', driverRoutes);
-app.use('/api/rides', rideRoutes);
-app.use('/api/deliveries', deliveryRoutes);
-app.use('/api/payments', paymentRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/notifications', notificationRoutes);
-
-
-// ==========================
-// 404 HANDLER
-// ==========================
-
+/* 404 */
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -178,39 +127,21 @@ app.use((req, res) => {
   });
 });
 
-
-// ==========================
-// GLOBAL ERROR HANDLER
-// ==========================
-
+/* GLOBAL ERROR HANDLER */
 app.use((err, req, res, next) => {
+  console.error(err);
 
-  logger.error(
-    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`
-  );
-
-  const statusCode = err.status || err.statusCode || 500;
-
-  res.status(statusCode).json({
+  res.status(err.status || 500).json({
     success: false,
-    message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    message: err.message || "Internal Server Error"
   });
-
 });
 
-
-// ==========================
-// START SERVER
-// ==========================
-
+/* SERVER START */
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
-  logger.info(
-    `🚀 ShareWay server running on port ${PORT} in ${process.env.NODE_ENV} mode`
-  );
+  console.log(`🚀 ShareWay backend running on port ${PORT}`);
 });
-
 
 module.exports = { app, server };
