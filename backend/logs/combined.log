@@ -46,3 +46,9 @@
 {"level":"info","message":"Socket connected: UNfaMi800wG76FicAAAG (user: 69d659acefdde17b416fb125)","service":"shareway-api","timestamp":"2026-04-14 17:57:28"}
 {"level":"info","message":"::1 - - [14/Apr/2026:12:27:28 +0000] \"GET /api/auth/me HTTP/1.1\" 304 - \"http://localhost:5173/\" \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/146.0.0.0 Safari/537.36\"","service":"shareway-api","timestamp":"2026-04-14 17:57:28"}
 {"level":"info","message":"Socket disconnected: UNfaMi800wG76FicAAAG (user: 69d659acefdde17b416fb125)","service":"shareway-api","timestamp":"2026-04-14 20:00:38"}
+{"level":"info","message":"Socket connected: ilhp-_dkb8Ux3IyWAAAI (user: 69d659acefdde17b416fb125)","service":"shareway-api","timestamp":"2026-04-14 20:00:45"}
+{"level":"info","message":"Socket disconnected: ilhp-_dkb8Ux3IyWAAAI (user: 69d659acefdde17b416fb125)","service":"shareway-api","timestamp":"2026-04-14 20:00:48"}
+{"level":"info","message":"Socket connected: IJhshCIc6EDn0bYVAAAK (user: 69d659acefdde17b416fb125)","service":"shareway-api","timestamp":"2026-04-14 20:34:12"}
+{"level":"info","message":"Socket disconnected: IJhshCIc6EDn0bYVAAAK (user: 69d659acefdde17b416fb125)","service":"shareway-api","timestamp":"2026-04-14 20:34:13"}
+{"level":"info","message":"Socket connected: gOw7_tkF_1C0CChTAAAM (user: 69d659acefdde17b416fb125)","service":"shareway-api","timestamp":"2026-04-14 20:56:11"}
+{"level":"info","message":"Socket disconnected: gOw7_tkF_1C0CChTAAAM (user: 69d659acefdde17b416fb125)","service":"shareway-api","timestamp":"2026-04-14 20:56:33"}
