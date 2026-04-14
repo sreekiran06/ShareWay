@@ -61,8 +61,7 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
-// ✅ FIXED: removed bare `app.options("*", cors())` which was overriding the config above
+app.options("*", cors(corsOptions)); // Explicitly handle preflight OPTIONS requests
 
 /* RATE LIMIT */
 const limiter = rateLimit({
