@@ -33,10 +33,21 @@ app.set('io', io);
 // Connect to Database
 connectDB();
 
-// Security Middleware
-app.use(helmet({
-  crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' }
-}));
+
+// =======================
+// SECURITY MIDDLEWARE
+// =======================
+
+app.use(
+  helmet({
+    crossOriginOpenerPolicy: { policy: 'same-origin-allow-popups' },
+  })
+);
+
+
+// =======================
+// CORS CONFIGURATION
+// =======================
 
 const allowedOrigins = [
   'http://localhost:5173',
@@ -45,53 +56,95 @@ const allowedOrigins = [
   process.env.FRONTEND_URL_2,
 ].filter(Boolean);
 
-app.use(cors({
+const corsOptions = {
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
+
     if (origin.endsWith('.vercel.app')) return callback(null, true);
     if (origin.endsWith('.onrender.com')) return callback(null, true);
+
     if (allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error('CORS blocked: ' + origin));
+
+    return callback(new Error('CORS blocked: ' + origin));
   },
+
   credentials: true,
+
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+
   allowedHeaders: ['Content-Type', 'Authorization'],
-  optionsSuccessStatus: 200
-}));
 
-app.options('*', cors());
+  optionsSuccessStatus: 200,
+};
 
-// Rate Limiting
+app.use(cors(corsOptions));
+
+// Handle preflight requests
+app.options('*', cors(corsOptions));
+
+
+// =======================
+// RATE LIMITING
+// =======================
+
 const limiter = rateLimit({
   windowMs: (parseInt(process.env.RATE_LIMIT_WINDOW) || 15) * 60 * 1000,
   max: parseInt(process.env.RATE_LIMIT_MAX) || 100,
-  message: { success: false, message: 'Too many requests, please try again later.' }
+  message: {
+    success: false,
+    message: 'Too many requests, please try again later.',
+  },
 });
+
 app.use('/api/', limiter);
 
-// Body Parsing
+
+// =======================
+// BODY PARSING
+// =======================
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Logging
+
+// =======================
+// LOGGING
+// =======================
+
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('combined', { stream: { write: msg => logger.info(msg.trim()) } }));
+  app.use(
+    morgan('combined', {
+      stream: { write: (msg) => logger.info(msg.trim()) },
+    })
+  );
 }
 
-// Static files
+
+// =======================
+// STATIC FILES
+// =======================
+
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// Health Check
+
+// =======================
+// HEALTH CHECK
+// =======================
+
 app.get('/health', (req, res) => {
   res.status(200).json({
     success: true,
     message: 'ShareWay API is running',
     timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    version: '1.0.0',
   });
 });
 
-// API Routes
+
+// =======================
+// API ROUTES
+// =======================
+
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/drivers', driverRoutes);
@@ -101,26 +154,47 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// 404 Handler
+
+// =======================
+// 404 HANDLER
+// =======================
+
 app.use((req, res) => {
-  res.status(404).json({ success: false, message: `Route ${req.originalUrl} not found` });
+  res
+    .status(404)
+    .json({ success: false, message: `Route ${req.originalUrl} not found` });
 });
 
-// Global Error Handler
+
+// =======================
+// GLOBAL ERROR HANDLER
+// =======================
+
 app.use((err, req, res, next) => {
-  logger.error(`${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`);
+  logger.error(
+    `${err.status || 500} - ${err.message} - ${req.originalUrl} - ${req.method} - ${req.ip}`
+  );
 
   const statusCode = err.status || err.statusCode || 500;
+
   res.status(statusCode).json({
     success: false,
     message: err.message || 'Internal Server Error',
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack }),
   });
 });
 
+
+// =======================
+// SERVER START
+// =======================
+
 const PORT = process.env.PORT || 5000;
+
 server.listen(PORT, () => {
-  logger.info(`🚀 ShareWay server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
+  logger.info(
+    `🚀 ShareWay server running on port ${PORT} in ${process.env.NODE_ENV} mode`
+  );
 });
 
 module.exports = { app, server };
