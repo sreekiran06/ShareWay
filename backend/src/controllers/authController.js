@@ -1,17 +1,28 @@
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const User = require('../models/User');
-const Driver = require('../models/Driver');
-const logger = require('../utils/logger');
+const jwt = require("jsonwebtoken");
+const crypto = require("crypto");
+const { OAuth2Client } = require("google-auth-library");
 
-const generateToken = (id) => jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: process.env.JWT_EXPIRE || '7d' });
-const generateRefreshToken = (id) => jwt.sign({ id }, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, { expiresIn: '30d' });
+const User = require("../models/User");
+const Driver = require("../models/Driver");
+const logger = require("../utils/logger");
 
-const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
+
+const generateToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, {
+    expiresIn: process.env.JWT_EXPIRE || "7d"
+  });
+
+const generateRefreshToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET, {
+    expiresIn: "30d"
+  });
+
+const sendTokenResponse = (user, statusCode, res, message = "Success") => {
   const token = generateToken(user._id);
   const refreshToken = generateRefreshToken(user._id);
 
-  const userObj = user.toObject ? user.toObject() : user;
+  const userObj = user.toObject();
   delete userObj.password;
   delete userObj.refreshToken;
 
@@ -24,79 +35,204 @@ const sendTokenResponse = (user, statusCode, res, message = 'Success') => {
   });
 };
 
+/* ================= REGISTER ================= */
+
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, password, role, referralCode } = req.body;
+    const { name, email, phone, password, role } = req.body;
 
-    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+    const existingUser = await User.findOne({
+      $or: [{ email }, { phone }]
+    });
+
     if (existingUser) {
       return res.status(400).json({
         success: false,
-        message: existingUser.email === email ? 'Email already registered' : 'Phone number already registered'
+        message: "Email or phone already registered"
       });
     }
 
-    let referredBy = null;
-    if (referralCode) {
-      const referrer = await User.findOne({ referralCode });
-      if (referrer) referredBy = referrer._id;
-    }
-
-    const user = await User.create({ name, email, phone, password, role: role === 'driver' ? 'driver' : 'user', referredBy });
+    const user = await User.create({
+      name,
+      email,
+      phone,
+      password,
+      role: role === "driver" ? "driver" : "user"
+    });
 
     logger.info(`New user registered: ${user.email}`);
-    sendTokenResponse(user, 201, res, 'Registration successful');
+
+    sendTokenResponse(user, 201, res, "Registration successful");
   } catch (error) {
     logger.error(`Registration error: ${error.message}`);
-    if (error.code === 11000) {
-      return res.status(400).json({ success: false, message: 'Email or phone already exists' });
-    }
-    res.status(500).json({ success: false, message: 'Registration failed', error: error.message });
+
+    res.status(500).json({
+      success: false,
+      message: "Registration failed"
+    });
   }
 };
+
+/* ================= LOGIN ================= */
 
 exports.login = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
 
     if ((!email && !phone) || !password) {
-      return res.status(400).json({ success: false, message: 'Please provide email/phone and password' });
+      return res.status(400).json({
+        success: false,
+        message: "Provide email/phone and password"
+      });
     }
 
     const query = email ? { email } : { phone };
-    const user = await User.findOne(query).select('+password');
+
+    const user = await User.findOne(query).select("+password");
 
     if (!user || !(await user.comparePassword(password))) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+      return res.status(401).json({
+        success: false,
+        message: "Invalid credentials"
+      });
     }
 
     if (!user.isActive) {
-      return res.status(403).json({ success: false, message: 'Account is deactivated. Contact support.' });
+      return res.status(403).json({
+        success: false,
+        message: "Account disabled"
+      });
     }
 
     user.lastLogin = Date.now();
     await user.save({ validateBeforeSave: false });
 
-    logger.info(`User logged in: ${user.email}`);
-    sendTokenResponse(user, 200, res, 'Login successful');
+    logger.info(`User login: ${user.email}`);
+
+    sendTokenResponse(user, 200, res, "Login successful");
   } catch (error) {
     logger.error(`Login error: ${error.message}`);
-    res.status(500).json({ success: false, message: 'Login failed' });
+
+    res.status(500).json({
+      success: false,
+      message: "Login failed"
+    });
   }
 };
+
+/* ================= GOOGLE LOGIN ================= */
+
+exports.googleAuth = async (req, res) => {
+  try {
+    const { credential, role } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        success: false,
+        message: "Google credential missing"
+      });
+    }
+
+    const ticket = await client.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID
+    });
+
+    const payload = ticket.getPayload();
+
+    const { email, name, picture } = payload;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Google email not returned"
+      });
+    }
+
+    let user = await User.findOne({ email });
+    let isNewUser = false;
+
+    if (!user) {
+      isNewUser = true;
+
+      const fakePhone =
+        "+91" + Math.floor(7000000000 + Math.random() * 2999999999);
+
+      user = await User.create({
+        name: name || email.split("@")[0],
+        email,
+        phone: fakePhone,
+        password: crypto.randomBytes(32).toString("hex"),
+        avatar: picture,
+        role: role === "driver" ? "driver" : "user",
+        isGoogleAuth: true,
+        isVerified: true,
+        isActive: true
+      });
+    } else {
+      if (picture && !user.avatar) {
+        user.avatar = picture;
+      }
+
+      user.lastLogin = Date.now();
+
+      await user.save({ validateBeforeSave: false });
+    }
+
+    logger.info(`Google login: ${user.email}`);
+
+    sendTokenResponse(
+      user,
+      isNewUser ? 201 : 200,
+      res,
+      "Google login successful"
+    );
+  } catch (error) {
+    logger.error(`Google auth error: ${error.message}`);
+
+    res.status(500).json({
+      success: false,
+      message: "Google authentication failed",
+      error: error.message
+    });
+  }
+};
+
+/* ================= GET USER ================= */
 
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id);
+
     let driverProfile = null;
-    if (user.role === 'driver') {
+
+    if (user.role === "driver") {
       driverProfile = await Driver.findOne({ user: user._id });
     }
-    res.status(200).json({ success: true, user, driverProfile });
+
+    res.status(200).json({
+      success: true,
+      user,
+      driverProfile
+    });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
   }
 };
+
+/* ================= LOGOUT ================= */
+
+exports.logout = async (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Logged out successfully"
+  });
+};
+
+/* ================= UPDATE PROFILE ================= */
 
 exports.updateProfile = async (req, res) => {
   try {
@@ -112,6 +248,8 @@ exports.updateProfile = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+/* ================= CHANGE PASSWORD ================= */
 
 exports.changePassword = async (req, res) => {
   try {
@@ -131,6 +269,8 @@ exports.changePassword = async (req, res) => {
   }
 };
 
+/* ================= REFRESH TOKEN ================= */
+
 exports.refreshToken = async (req, res) => {
   try {
     const { refreshToken } = req.body;
@@ -145,69 +285,5 @@ exports.refreshToken = async (req, res) => {
     res.status(200).json({ success: true, token: newToken });
   } catch (error) {
     res.status(401).json({ success: false, message: 'Invalid refresh token' });
-  }
-};
-
-exports.logout = async (req, res) => {
-  res.status(200).json({ success: true, message: 'Logged out successfully' });
-};
-
-const { OAuth2Client } = require('google-auth-library');
-const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
-
-// Google OAuth — securely verifies ID token from frontend
-exports.googleAuth = async (req, res) => {
-  try {
-    const { credential, role } = req.body;
-
-    if (!credential) {
-      return res.status(400).json({ success: false, message: 'Google ID token (credential) is required' });
-    }
-
-    // Securely verify ID token using google-auth-library
-    const ticket = await client.verifyIdToken({
-      idToken: credential,
-      audience: process.env.GOOGLE_CLIENT_ID
-    });
-
-    const payload = ticket.getPayload();
-    const { email, name, picture } = payload;
-
-    if (!email) {
-      return res.status(400).json({ success: false, message: 'Email is required from Google auth' });
-    }
-
-    // Find existing user or create new one
-    let user = await User.findOne({ email });
-
-    if (!user) {
-      const fakePhone = '+91' + Math.floor(7000000000 + Math.random() * 2999999999);
-      user = await User.create({
-        name: name || email.split('@')[0],
-        email,
-        phone: fakePhone,
-        password: require('crypto').randomBytes(32).toString('hex'), // random unguessable password
-        avatar: picture,
-        role: role === 'driver' ? 'driver' : 'user',
-        isGoogleAuth: true,
-        isVerified: true,
-        isActive: true
-      });
-    } else {
-      if (picture && !user.avatar) {
-        user.avatar = picture;
-      }
-      user.lastLogin = Date.now();
-      await user.save({ validateBeforeSave: false });
-    }
-
-    logger.info(`Google auth login: ${user.email}`);
-    sendTokenResponse(user, user.isNew ? 201 : 200, res, 'Google login successful');
-  } catch (error) {
-    logger.error(`Google auth error: ${error.message}`);
-    if (error.code === 11000) {
-      return res.status(400).json({ success: false, message: 'Account already exists. Please login with email/password.' });
-    }
-    res.status(500).json({ success: false, message: 'Google authentication failed', error: error.message });
   }
 };
