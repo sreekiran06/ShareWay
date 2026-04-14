@@ -82,6 +82,6 @@ const deliverySchema = new mongoose.Schema({
 
 deliverySchema.index({ sender: 1, status: 1 });
 deliverySchema.index({ driver: 1, status: 1 });
-deliverySchema.index({ deliveryId: 1 });
+
 
 module.exports = mongoose.model('Delivery', deliverySchema);

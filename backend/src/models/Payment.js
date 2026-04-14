@@ -28,6 +28,6 @@ const paymentSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 paymentSchema.index({ user: 1, status: 1 });
-paymentSchema.index({ paymentId: 1 });
+
 
 module.exports = mongoose.model('Payment', paymentSchema);
