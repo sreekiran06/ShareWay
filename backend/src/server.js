@@ -1,3 +1,7 @@
+// src/server.js
+
+require("dotenv").config();
+
 const express = require("express");
 const http = require("http");
 const cors = require("cors");
@@ -5,11 +9,10 @@ const helmet = require("helmet");
 const morgan = require("morgan");
 const rateLimit = require("express-rate-limit");
 const path = require("path");
-require("dotenv").config();
 
+// Your modules
 const connectDB = require("./config/database");
 const { initializeSocket } = require("./socket/socketHandler");
-const logger = require("./utils/logger");
 
 // Routes
 const authRoutes = require("./routes/auth");
@@ -24,92 +27,109 @@ const notificationRoutes = require("./routes/notifications");
 const app = express();
 const server = http.createServer(app);
 
-/* IMPORTANT FIX FOR RENDER */
+/**
+ * IMPORTANT for deployments behind a proxy (like Render)
+ * Fixes express-rate-limit + X-Forwarded-For issues
+ */
 app.set("trust proxy", 1);
 
-/* SOCKET.IO */
+/**
+ * Socket.io
+ */
 const io = initializeSocket(server);
 app.set("io", io);
 
-/* DATABASE */
+/**
+ * Connect DB
+ */
 connectDB();
 
-/* SECURITY */
+/**
+ * Security headers
+ * allow Google popup login
+ */
 app.use(
   helmet({
     crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" }
   })
 );
 
-/* CORS CONFIGURATION */
+/**
+ * CORS configuration
+ * Allows Vercel frontend + local dev
+ */
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
   "https://share-way.vercel.app"
 ];
 
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
 
-      if (origin.endsWith(".vercel.app")) {
-        return callback(null, true);
-      }
+    if (origin.endsWith(".vercel.app")) {
+      return callback(null, true);
+    }
 
-      return callback(null, false);
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"]
-  })
-);
+    callback(null, false);
+  },
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+};
 
-/* HANDLE PREFLIGHT */
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
-/* RATE LIMITER */
+/**
+ * Rate limiter
+ */
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
-  message: {
-    success: false,
-    message: "Too many requests, please try again later."
-  }
+  standardHeaders: true,
+  legacyHeaders: false
 });
 
 app.use("/api", limiter);
 
-/* BODY PARSER */
+/**
+ * Body parser
+ */
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-/* LOGGER */
+/**
+ * Logger
+ */
 if (process.env.NODE_ENV !== "test") {
-  app.use(
-    morgan("combined", {
-      stream: { write: (msg) => logger.info(msg.trim()) }
-    })
-  );
+  app.use(morgan("dev"));
 }
 
-/* STATIC FILES */
+/**
+ * Static files
+ */
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-/* HEALTH CHECK */
+/**
+ * Health check route
+ */
 app.get("/health", (req, res) => {
-  res.json({
+  res.status(200).json({
     success: true,
     message: "ShareWay API is running",
     time: new Date()
   });
 });
 
-/* ROUTES */
+/**
+ * API Routes
+ */
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/drivers", driverRoutes);
@@ -119,7 +139,9 @@ app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
 
-/* 404 */
+/**
+ * 404 handler
+ */
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -127,9 +149,11 @@ app.use((req, res) => {
   });
 });
 
-/* GLOBAL ERROR HANDLER */
+/**
+ * Global error handler
+ */
 app.use((err, req, res, next) => {
-  console.error(err);
+  console.error("ERROR:", err);
 
   res.status(err.status || 500).json({
     success: false,
@@ -137,7 +161,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-/* SERVER START */
+/**
+ * Start server
+ */
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, () => {
