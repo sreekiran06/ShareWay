@@ -77,8 +77,8 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     const payload = usePhone
-      ? { phone: form.email, password: form.password }
-      : { email: form.email, password: form.password };
+      ? { phone: form.email.trim(), password: form.password }
+      : { email: form.email.trim(), password: form.password };
     const result = await login(payload);
     if (result.success) {
       toast.success(`Welcome back, ${result.user.name.split(' ')[0]}! 👋`);
@@ -194,7 +194,7 @@ export default function LoginPage() {
               <span>{icon} <span className="font-mono bg-surface-200 px-1.5 py-0.5 rounded">{email}</span></span>
               <button
                 type="button"
-                onClick={() => setForm({ email, password: 'demo1234' })}
+                onClick={() => { setForm({ email, password: 'demo1234' }); setUsePhone(false); }}
                 className="text-brand-500 font-semibold hover:text-brand-600 ml-2"
               >
                 Use

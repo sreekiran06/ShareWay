@@ -6,18 +6,30 @@ const logger = require('../utils/logger');
 exports.registerDriver = async (req, res) => {
   try {
     const existing = await Driver.findOne({ user: req.user._id });
-    if (existing) return res.status(400).json({ success: false, message: 'Driver profile already exists' });
+    if (existing && existing.status !== 'rejected') {
+      return res.status(400).json({ success: false, message: 'Driver profile already exists' });
+    }
 
     const { licenseNumber, vehicleDetails, bankDetails, serviceTypes } = req.body;
 
-    const driver = await Driver.create({
-      user: req.user._id,
-      licenseNumber,
-      vehicleDetails,
-      bankDetails,
-      serviceTypes: serviceTypes || ['ride'],
-      status: 'pending'
-    });
+    let driver;
+    if (existing && existing.status === 'rejected') {
+      existing.licenseNumber = licenseNumber;
+      existing.vehicleDetails = vehicleDetails;
+      existing.bankDetails = bankDetails;
+      existing.serviceTypes = serviceTypes || ['ride'];
+      existing.status = 'pending';
+      driver = await existing.save();
+    } else {
+      driver = await Driver.create({
+        user: req.user._id,
+        licenseNumber,
+        vehicleDetails,
+        bankDetails,
+        serviceTypes: serviceTypes || ['ride'],
+        status: 'pending'
+      });
+    }
 
     await User.findByIdAndUpdate(req.user._id, { role: 'driver' });
 

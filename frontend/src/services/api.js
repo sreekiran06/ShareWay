@@ -113,3 +113,12 @@ export const paymentService = {
   getHistory: () => api.get('/payments/history'),
   topUpWallet: (data) => api.post('/payments/wallet/topup', data)
 };
+
+export const carpoolService = {
+  postRide: (data) => api.post('/carpools', data),
+  searchRides: (params) => api.get('/carpools/search', { params }),
+  getDriverRides: () => api.get('/carpools/driver'),
+  requestRide: (id, data) => api.post(`/carpools/${id}/request`, data),
+  respondToRequest: (id, requestId, data) => api.put(`/carpools/${id}/request/${requestId}`, data),
+  cancelRide: (id) => api.put(`/carpools/${id}/cancel`),
+};

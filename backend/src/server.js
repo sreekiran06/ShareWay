@@ -20,6 +20,7 @@ const deliveryRoutes = require("./routes/deliveries");
 const paymentRoutes = require("./routes/payments");
 const adminRoutes = require("./routes/admin");
 const notificationRoutes = require("./routes/notifications");
+const carpoolRoutes = require("./routes/carpools");
 
 const app = express();
 const server = http.createServer(app);
@@ -103,6 +104,7 @@ app.use("/api/deliveries", deliveryRoutes);
 app.use("/api/payments", paymentRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/carpools", carpoolRoutes);
 
 /* 404 */
 app.use((req, res) => {

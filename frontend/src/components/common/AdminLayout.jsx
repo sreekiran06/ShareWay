@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, Users, Car, MapPin, Package, Settings, LogOut, Menu, Shield } from 'lucide-react';
+import { Activity, Users, Car, MapPin, Package, Settings, LogOut, Menu, Shield } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 
 const navItems = [
-  { to: '/admin', icon: BarChart3, label: 'Dashboard' },
+  { to: '/admin', icon: Activity, label: 'Dashboard' },
   { to: '/admin/users', icon: Users, label: 'Users' },
   { to: '/admin/drivers', icon: Car, label: 'Drivers' },
   { to: '/admin/rides', icon: MapPin, label: 'Rides' },

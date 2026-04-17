@@ -24,12 +24,14 @@ import SendPackagePage from './pages/user/SendPackagePage';
 import DeliveryTrackingPage from './pages/user/DeliveryTrackingPage';
 import RideHistoryPage from './pages/user/RideHistoryPage';
 import ProfilePage from './pages/user/ProfilePage';
+import SearchRidePage from './pages/user/SearchRidePage';
 
 // Driver Pages
 import DriverDashboardPage from './pages/driver/DriverDashboardPage';
 import DriverRegisterPage from './pages/driver/DriverRegisterPage';
 import DriverRidesPage from './pages/driver/DriverRidesPage';
 import DriverEarningsPage from './pages/driver/DriverEarningsPage';
+import PostRidePage from './pages/driver/PostRidePage';
 
 // Admin Pages
 import AdminDashboardPage from './pages/admin/AdminDashboardPage';
@@ -87,6 +89,7 @@ export default function App() {
               <Route path="delivery/:id" element={<DeliveryTrackingPage />} />
               <Route path="history" element={<RideHistoryPage />} />
               <Route path="profile" element={<ProfilePage />} />
+              <Route path="search-ride" element={<SearchRidePage />} />
               <Route path="driver/register" element={<DriverRegisterPage />} />
             </Route>
 
@@ -95,6 +98,7 @@ export default function App() {
               <Route index element={<DriverDashboardPage />} />
               <Route path="rides" element={<DriverRidesPage />} />
               <Route path="earnings" element={<DriverEarningsPage />} />
+              <Route path="post-ride" element={<PostRidePage />} />
             </Route>
 
             {/* Admin Routes */}

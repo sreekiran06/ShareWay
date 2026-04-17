@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ToggleLeft, ToggleRight, Car, DollarSign, Star, Clock, MapPin, Bell } from 'lucide-react';
+import { ToggleLeft, ToggleRight, Car, DollarSign, Star, Clock, MapPin, Bell, IndianRupee, Users, User } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { driverService } from '../../services/api';
+import { driverService, carpoolService } from '../../services/api';
 import { getSocket } from '../../services/socket';
 
 export default function DriverDashboardPage() {
@@ -21,8 +21,14 @@ export default function DriverDashboardPage() {
     queryFn: () => driverService.getEarnings().then(r => r.data)
   });
 
+  const { data: carpoolData, refetch: refetchCarpools } = useQuery({
+    queryKey: ['driver-carpools'],
+    queryFn: () => carpoolService.getDriverRides().then(r => r.data)
+  });
+
   const driver = profileData?.driver;
   const earnings = earningsData?.earnings;
+  const myCarpools = carpoolData?.carpools || [];
 
   useEffect(() => {
     if (driver) setIsOnline(driver.isOnline);
@@ -56,21 +62,35 @@ export default function DriverDashboardPage() {
     finally { setToggling(false); }
   };
 
-  const handleAcceptRide = async (ride) => {
-    setAccepting(ride.ride._id);
-    const socket = getSocket();
-    if (socket) {
-      socket.emit('accept_ride', { rideId: ride.ride._id });
-      socket.once('ride_accept_confirmed', () => {
-        toast.success('Ride accepted!');
-        setPendingRides(prev => prev.filter(r => r.rideId !== ride.rideId));
-      });
+  const handleAcceptRequest = async (carpoolId, requestId) => {
+    try {
+      await carpoolService.respondToRequest(carpoolId, requestId, { status: 'accepted' });
+      toast.success('Passenger request accepted!');
+      refetchCarpools();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to accept request');
     }
-    setAccepting(null);
   };
 
-  const handleRejectRide = (rideId) => {
-    setPendingRides(prev => prev.filter(r => r.rideId !== rideId));
+  const handleRejectRequest = async (carpoolId, requestId) => {
+    try {
+      await carpoolService.respondToRequest(carpoolId, requestId, { status: 'rejected' });
+      toast.success('Passenger request rejected');
+      refetchCarpools();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reject request');
+    }
+  };
+
+  const handleCancelRide = async (carpoolId) => {
+    if (!window.confirm('Are you sure you want to cancel this ride?')) return;
+    try {
+      await carpoolService.cancelRide(carpoolId);
+      toast.success('Ride cancelled');
+      refetchCarpools();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to cancel ride');
+    }
   };
 
   if (!driver) return (
@@ -82,10 +102,10 @@ export default function DriverDashboardPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6 animate-fade-in">
       {/* Status header */}
-      <div className={`rounded-3xl p-6 flex items-center justify-between transition-colors duration-300 ${isOnline ? 'bg-emerald-500' : 'bg-surface-700'}`}>
+      <div className={`rounded-3xl p-6 flex items-center justify-between transition-colors duration-300 ${isOnline ? 'bg-emerald-500' : 'bg-gray-200'}`}>
         <div>
-          <p className="text-white/80 text-sm font-medium mb-1">Status</p>
-          <p className="font-display font-bold text-2xl text-white">{isOnline ? 'Online — Accepting Rides' : 'Offline'}</p>
+          <p className="text-gray-600 text-sm font-medium mb-1">Status</p>
+          <p className="font-display font-bold text-2xl text-surface-900">{isOnline ? 'Online — Accepting Rides' : 'Offline'}</p>
           {driver.status !== 'approved' && (
             <span className="badge bg-amber-500/30 text-amber-200 mt-2">{driver.status === 'pending' ? '⏳ Pending Approval' : driver.status}</span>
           )}
@@ -93,7 +113,7 @@ export default function DriverDashboardPage() {
         <button onClick={handleToggleOnline} disabled={toggling} className="p-1 rounded-full transition-all">
           {isOnline
             ? <ToggleRight size={52} className="text-white" />
-            : <ToggleLeft size={52} className="text-surface-400" />}
+            : <ToggleLeft size={52} className="text-gray-400" />}
         </button>
       </div>
 
@@ -104,53 +124,87 @@ export default function DriverDashboardPage() {
           { label: 'This Week', value: `₹${earnings?.week?.amount || 0}`, sub: `${earnings?.week?.rides || 0} rides`, color: 'text-brand-400' },
           { label: 'Total Earned', value: `₹${earnings?.total?.amount || 0}`, sub: `${earnings?.total?.rides || 0} rides`, color: 'text-blue-400' },
         ].map(({ label, value, sub, color }) => (
-          <div key={label} className="bg-surface-800 rounded-2xl p-4 text-center">
+          <div key={label} className="bg-white border border-gray-200 rounded-2xl p-4 text-center shadow-sm">
             <p className={`font-display font-bold text-xl ${color}`}>{value}</p>
-            <p className="text-xs text-surface-400 mt-0.5">{label}</p>
-            <p className="text-xs text-surface-500">{sub}</p>
+            <p className="text-gray-500 text-xs mt-0.5">{label}</p>
+            <p className="text-gray-400 text-xs">{sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Pending ride requests */}
-      {pendingRides.length > 0 && (
-        <div className="space-y-3">
-          <h3 className="font-display font-bold text-white flex items-center gap-2">
-            <Bell size={16} className="text-brand-400" /> New Requests ({pendingRides.length})
-          </h3>
-          {pendingRides.map((req) => (
-            <div key={req.rideId} className="bg-surface-800 border border-surface-600 rounded-2xl p-4 animate-slide-up">
-              <div className="flex items-center justify-between mb-3">
-                <span className="badge badge-brand">{req.ride?.rideType || 'standard'}</span>
-                <span className="font-bold text-white text-lg">₹{req.ride?.fare?.total}</span>
-              </div>
-              <div className="space-y-2 mb-4 text-sm">
-                <div className="flex items-start gap-2">
-                  <div className="w-2 h-2 mt-1.5 bg-emerald-500 rounded-full flex-shrink-0" />
-                  <p className="text-surface-300 truncate">{req.ride?.pickup?.address}</p>
+      {/* Listed Carpools */}
+      <div className="space-y-4">
+        <h3 className="font-display font-bold text-surface-900 flex items-center gap-2">
+          <Car size={16} className="text-brand-500" /> Your Posted Rides
+        </h3>
+        {myCarpools.length === 0 ? (
+          <p className="text-gray-500 text-sm">You haven't posted any rides yet.</p>
+        ) : (
+          myCarpools.map(carpool => (
+            <div key={carpool._id} className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className={`badge ${carpool.status === 'active' ? 'bg-emerald-500/20 text-emerald-600' : 'bg-gray-100 text-gray-600'}`}>
+                      {carpool.status.toUpperCase()}
+                    </span>
+                    <span className="text-gray-500 text-xs">{new Date(carpool.departureDate).toLocaleDateString()} at {carpool.departureTime}</span>
+                  </div>
                 </div>
-                <div className="flex items-start gap-2">
-                  <div className="w-2 h-2 mt-1.5 bg-red-500 rounded-full flex-shrink-0" />
-                  <p className="text-surface-300 truncate">{req.ride?.destination?.address}</p>
+                <div className="text-right">
+                  <span className="font-bold text-surface-900 text-lg flex items-center justify-end"><IndianRupee size={16} />{carpool.costPerSeat}</span>
+                  <span className="text-xs text-gray-500">per seat</span>
                 </div>
-                <p className="text-xs text-surface-500 flex items-center gap-1">
-                  <MapPin size={10} />{req.ride?.distance?.text} · {req.ride?.duration?.text}
-                </p>
               </div>
-              <div className="flex gap-2">
-                <button onClick={() => handleRejectRide(req.rideId)}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold border border-surface-600 text-surface-400 hover:bg-surface-700 transition-colors">
-                  Reject
-                </button>
-                <button onClick={() => handleAcceptRide(req)} disabled={accepting === req.ride?._id}
-                  className="flex-1 py-2.5 rounded-xl text-sm font-semibold bg-brand-500 text-white hover:bg-brand-600 transition-colors">
-                  {accepting === req.ride?._id ? '...' : 'Accept'}
-                </button>
+
+              <div className="space-y-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <MapPin size={16} className="text-brand-400" />
+                  <p className="text-gray-700 text-sm">{carpool.startingLocation} <span className="text-gray-400 mx-1">→</span> {carpool.destination}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Users size={16} className="text-gray-400" />
+                  <p className="text-gray-600 text-sm">{carpool.availableSeats} of {carpool.totalSeats} seats left</p>
+                </div>
               </div>
+
+              {/* Rider Requests */}
+              {carpool.requests?.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Passenger Requests</h4>
+                  <div className="space-y-2">
+                    {carpool.requests.map(req => (
+                      <div key={req._id} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold overflow-hidden">
+                            {req.passenger?.avatar ? <img src={req.passenger.avatar} alt="Passenger" /> : req.passenger?.name?.charAt(0) || <User size={14}/>}
+                          </div>
+                          <div>
+                            <p className="text-gray-800 text-sm font-medium">{req.passenger?.name}</p>
+                            <p className="text-gray-500 text-xs">{req.seatsRequested} seat(s) • {req.status}</p>
+                          </div>
+                        </div>
+                        {req.status === 'pending' && carpool.status === 'active' && (
+                          <div className="flex gap-2">
+                            <button onClick={() => handleRejectRequest(carpool._id, req._id)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Reject</button>
+                            <button onClick={() => handleAcceptRequest(carpool._id, req._id)} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Accept</button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {carpool.status === 'active' && (
+                <div className="mt-4 flex justify-end">
+                  <button onClick={() => handleCancelRide(carpool._id)} className="text-red-400 text-xs px-3 py-1 hover:bg-red-400/10 rounded-lg transition-colors">Cancel Ride</button>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
-      )}
+          ))
+        )}
+      </div>
 
       {/* Vehicle info */}
       <div className="bg-surface-800 rounded-2xl p-5">

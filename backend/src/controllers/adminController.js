@@ -130,6 +130,26 @@ exports.approveDriver = async (req, res) => {
     const driver = await Driver.findByIdAndUpdate(driverId, { status }, { new: true }).populate('user');
     if (!driver) return res.status(404).json({ success: false, message: 'Driver not found' });
 
+    if (status === 'rejected') {
+      const user = await User.findById(driver.user._id);
+      if (user) {
+        user.notifications.push({
+          type: 'system',
+          title: 'Application Rejected',
+          message: 'Your driver application was rejected. Please review your details and apply again.'
+        });
+        await user.save();
+
+        const io = req.app.get('io');
+        if (io) {
+          io.to(`user_${user._id}`).emit('notification', {
+            title: 'Application Rejected',
+            message: 'Your driver application was rejected. Please review your details and apply again.'
+          });
+        }
+      }
+    }
+
     res.status(200).json({ success: true, message: `Driver ${status}`, driver });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });

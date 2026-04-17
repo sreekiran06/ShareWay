@@ -106,13 +106,13 @@ export function DriverEarningsPage() {
 
   return (
     <div className="p-4 sm:p-6 space-y-5 animate-fade-in">
-      <h1 className="font-display font-bold text-xl text-white">Earnings</h1>
+      <h1 className="font-display font-bold text-xl text-surface-900">Earnings</h1>
       <div className="bg-gradient-to-br from-brand-500 to-brand-700 rounded-3xl p-6 text-white">
         <p className="text-brand-200 text-sm">Total Lifetime Earnings</p>
         <p className="font-display font-bold text-4xl mt-1">₹0.00</p>
         <p className="text-brand-200 text-xs mt-2">Keep driving to earn more!</p>
       </div>
-      <div className="text-center py-8 bg-surface-800 rounded-2xl text-surface-500">
+      <div className="text-center py-8 bg-gray-50 rounded-2xl text-gray-500">
         <p className="text-sm">Earnings breakdown will appear here as you complete rides</p>
       </div>
     </div>
