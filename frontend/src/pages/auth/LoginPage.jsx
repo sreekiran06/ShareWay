@@ -65,7 +65,7 @@ export default function LoginPage() {
         {
           theme: 'outline',
           size: 'large',
-          width: '100%',
+          width: 320, // Fixed width instead of percentage
           shape: 'rectangular',
           text: 'continue_with',
         }
