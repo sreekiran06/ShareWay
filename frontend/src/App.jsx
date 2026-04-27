@@ -94,7 +94,7 @@ export default function App() {
             </Route>
 
             {/* Driver Routes */}
-            <Route path="/driver" element={<ProtectedRoute allowedRoles={['driver']}><DriverLayout /></ProtectedRoute>}>
+            <Route path="/driver" element={<ProtectedRoute allowedRoles={['driver', 'both']}><DriverLayout /></ProtectedRoute>}>
               <Route index element={<DriverDashboardPage />} />
               <Route path="rides" element={<DriverRidesPage />} />
               <Route path="earnings" element={<DriverEarningsPage />} />

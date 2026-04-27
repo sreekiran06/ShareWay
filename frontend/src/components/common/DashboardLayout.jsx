@@ -9,7 +9,6 @@ import toast from 'react-hot-toast';
 
 const navItems = [
   { to: '/', icon: Home, label: 'Home' },
-  { to: '/book-ride', icon: Car, label: 'Book Ride' },
   { to: '/send-package', icon: Package, label: 'Send Package' },
   { to: '/history', icon: Clock, label: 'History' },
   { to: '/profile', icon: User, label: 'Profile' },
@@ -17,6 +16,7 @@ const navItems = [
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
@@ -148,16 +148,48 @@ export default function DashboardLayout() {
             </div>
 
             <div className="flex items-center gap-2">
-              <Link
-                to="/profile"
-                className="relative p-2 rounded-xl hover:bg-surface-100 transition-colors"
-              >
-                <Bell size={20} className="text-surface-600" />
-                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-brand-500 rounded-full" />
-              </Link>
-              <div className="w-9 h-9 bg-brand-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-brand cursor-pointer">
-                {user?.name?.charAt(0).toUpperCase()}
+              <div className="relative">
+                <button
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="relative p-2 rounded-xl hover:bg-surface-100 transition-colors"
+                >
+                  <Bell size={20} className="text-surface-600" />
+                  {user?.notifications?.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 p-1 bg-brand-500 rounded-full border-2 border-white" />}
+                </button>
+
+                {showNotifications && (
+                  <div className="absolute right-0 mt-3 w-80 bg-white rounded-2xl shadow-xl shadow-surface-200/50 border border-surface-200 z-50 overflow-hidden animate-slide-up">
+                    <div className="p-4 border-b border-surface-100 flex justify-between items-center bg-surface-50">
+                      <h3 className="font-semibold text-surface-900">Notifications</h3>
+                      <button onClick={() => setShowNotifications(false)} className="text-surface-400 hover:text-surface-600 rounded-full hover:bg-surface-200 p-1 transition-colors">
+                        <X size={16} />
+                      </button>
+                    </div>
+                    <div className="max-h-80 overflow-y-auto">
+                      {user?.notifications && user.notifications.length > 0 ? (
+                        user.notifications.map((notif, i) => (
+                           <div key={i} className="p-4 border-b border-surface-50 hover:bg-surface-50 cursor-pointer transition-colors">
+                              <p className="text-sm font-medium text-surface-900">{notif.title}</p>
+                              <p className="text-xs text-surface-500 mt-1">{notif.message}</p>
+                           </div>
+                        ))
+                      ) : (
+                        <div className="p-8 text-center text-surface-500 flex flex-col items-center">
+                          <div className="w-12 h-12 bg-surface-100 rounded-full flex items-center justify-center mb-3">
+                            <Bell size={20} className="text-surface-400" />
+                          </div>
+                          <p className="text-sm font-medium text-surface-700">No new notifications</p>
+                          <p className="text-xs mt-1">You're all caught up!</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
+
+              <Link to="/profile" className="w-9 h-9 ml-1 bg-brand-500 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-brand hover:ring-2 hover:ring-brand-200 transition-all cursor-pointer">
+                {user?.name?.charAt(0).toUpperCase() || <User size={16} />}
+              </Link>
             </div>
           </div>
         </header>

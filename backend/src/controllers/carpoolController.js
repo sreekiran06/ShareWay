@@ -1,4 +1,5 @@
 const Carpool = require('../models/Carpool');
+const User = require('../models/User');
 const logger = require('../utils/logger');
 
 // POST /api/carpools
@@ -70,9 +71,13 @@ exports.getDriverRides = async (req, res) => {
 // POST /api/carpools/:id/request
 exports.requestRide = async (req, res) => {
   try {
-    const { seatsRequested } = req.body;
+    const { seatsRequested, pickupLocation, dropoffLocation } = req.body;
     const requestedSeats = seatsRequested || 1;
     
+    if (!pickupLocation || !dropoffLocation) {
+      return res.status(400).json({ success: false, message: 'Pickup and Drop-off locations must be specified' });
+    }
+
     const carpool = await Carpool.findById(req.params.id);
 
     if (!carpool) return res.status(404).json({ success: false, message: 'Ride not found' });
@@ -87,11 +92,28 @@ exports.requestRide = async (req, res) => {
 
     carpool.requests.push({
       passenger: req.user._id,
+      pickupLocation,
+      dropoffLocation,
       seatsRequested: requestedSeats,
       status: 'pending'
     });
 
     await carpool.save();
+
+    // Send Notification to Driver
+    try {
+      const driver = await User.findById(carpool.driver);
+      if (driver) {
+        driver.notifications.push({
+          type: 'carpool',
+          title: '🚗 New Ride Request',
+          message: `${req.user.name} requested ${requestedSeats} seat(s) from ${pickupLocation.split(',')[0]} to ${dropoffLocation.split(',')[0]}.`
+        });
+        await driver.save();
+      }
+    } catch (notifErr) {
+      logger.error('Failed to notify driver: ' + notifErr.message);
+    }
 
     res.status(200).json({ success: true, message: 'Request sent to driver successfully', carpool });
   } catch (error) {
@@ -127,6 +149,23 @@ exports.respondToRequest = async (req, res) => {
 
     request.status = status;
     await carpool.save();
+
+    // Send Notification to Passenger
+    try {
+      const passenger = await User.findById(request.passenger);
+      if (passenger) {
+        passenger.notifications.push({
+          type: 'carpool',
+          title: status === 'accepted' ? '✅ Ride Request Accepted!' : '❌ Ride Request Rejected',
+          message: status === 'accepted' 
+            ? `Your driver accepted your request to travel to ${carpool.destination.split(',')[0]}!`
+            : `Unfortunately, your driver rejected your request to travel to ${carpool.destination.split(',')[0]}.`
+        });
+        await passenger.save();
+      }
+    } catch (notifErr) {
+      logger.error('Failed to notify passenger: ' + notifErr.message);
+    }
 
     res.status(200).json({ success: true, message: `Request ${status} successfully`, carpool });
   } catch (error) {

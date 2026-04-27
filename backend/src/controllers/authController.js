@@ -57,7 +57,7 @@ exports.register = async (req, res) => {
       email,
       phone,
       password,
-      role: role === "driver" ? "driver" : "user"
+      role: ['driver', 'both'].includes(role) ? role : 'user'
     });
 
     logger.info(`New user registered: ${user.email}`);
@@ -164,7 +164,7 @@ exports.googleAuth = async (req, res) => {
         phone: fakePhone,
         password: crypto.randomBytes(32).toString("hex"),
         avatar: picture,
-        role: role === "driver" ? "driver" : "user",
+        role: ['driver', 'both'].includes(role) ? role : 'user',
         isGoogleAuth: true,
         isVerified: true,
         isActive: true

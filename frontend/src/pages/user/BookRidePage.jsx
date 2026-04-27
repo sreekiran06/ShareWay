@@ -14,12 +14,16 @@ const RIDE_TYPES = [
   { type: 'xl', icon: Truck, label: 'XL', capacity: '6 seats', eta: '10 min' },
 ];
 
-// Geocode using Nominatim (free OpenStreetMap geocoder)
+// Geocode using OpenRouteService
 const geocodeAddress = async (address) => {
   try {
-    const resp = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=5&countrycodes=in`);
+    const resp = await fetch(`https://api.openrouteservice.org/geocode/autocomplete?api_key=${import.meta.env.VITE_ORS_API_KEY}&text=${encodeURIComponent(address)}&boundary.country=IN&size=5`);
     const data = await resp.json();
-    return data.map(r => ({ label: r.display_name, lat: parseFloat(r.lat), lng: parseFloat(r.lon) }));
+    return data.features.map(f => ({
+      label: f.properties.label,
+      lat: f.geometry.coordinates[1],
+      lng: f.geometry.coordinates[0]
+    }));
   } catch {
     return [];
   }

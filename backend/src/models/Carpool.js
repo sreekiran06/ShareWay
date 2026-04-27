@@ -44,6 +44,14 @@ const carpoolSchema = new mongoose.Schema({
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User'
     },
+    pickupLocation: {
+      type: String,
+      required: true
+    },
+    dropoffLocation: {
+      type: String,
+      required: true
+    },
     status: {
       type: String,
       enum: ['pending', 'accepted', 'rejected', 'cancelled'],

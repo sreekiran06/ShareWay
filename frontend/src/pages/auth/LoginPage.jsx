@@ -1,21 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Phone, ArrowRight } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Phone, ArrowRight, User, Car, Map, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 import api from '../../services/api';
 
-const loadGoogleScript = () => {
-  return new Promise((resolve) => {
-    if (window.google) return resolve(window.google);
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve(window.google);
-    document.head.appendChild(script);
-  });
-};
+import { GoogleLogin } from '@react-oauth/google';
 
 export default function LoginPage() {
   const navigate = useNavigate();
@@ -24,14 +14,23 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [usePhone, setUsePhone] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [googleCred, setGoogleCred] = useState(null);
+  const [googleRole, setGoogleRole] = useState('user');
 
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-  const handleGoogleCallback = async (response) => {
+  const handleGoogleCallback = (response) => {
+    // Intercept flow to ask for role
+    setGoogleCred(response.credential);
+  };
+
+  const submitGoogleAuth = async () => {
+    if (!googleCred) return;
     setGoogleLoading(true);
     try {
       const { data } = await api.post('/auth/google', {
-        credential: response.credential,
+        credential: googleCred,
+        role: googleRole,
       });
 
       // ✅ Use store methods directly — zustand-persist handles localStorage automatically
@@ -41,38 +40,17 @@ export default function LoginPage() {
       toast.success(`Welcome, ${data.user.name.split(' ')[0]}! 👋`);
       navigate(
         data.user.role === 'admin' ? '/admin' :
-          data.user.role === 'driver' ? '/driver' : '/'
+          ['driver', 'both'].includes(data.user.role) ? '/driver' : '/'
       );
     } catch (err) {
       toast.error(err.response?.data?.message || 'Google sign-in failed');
     } finally {
       setGoogleLoading(false);
+      setGoogleCred(null);
     }
   };
 
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
-    loadGoogleScript().then((google) => {
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCallback,
-        cancel_on_tap_outside: true,
-        // ✅ Use the button flow, not One Tap popup (avoids COOP issues)
-        use_fedcm_for_prompt: true,
-      });
-      google.accounts.id.renderButton(
-        document.getElementById('google-signin-btn'),
-        {
-          theme: 'outline',
-          size: 'large',
-          width: 320, // Fixed width instead of percentage
-          shape: 'rectangular',
-          text: 'continue_with',
-        }
-      );
-      // ✅ Do NOT call google.accounts.id.prompt() here — button handles it safely
-    });
-  }, [GOOGLE_CLIENT_ID]);
+  // Removed manual google initialization
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -107,16 +85,23 @@ export default function LoginPage() {
       {/* Google Sign-In */}
       <div className="mb-5">
         {GOOGLE_CLIENT_ID ? (
-          <>
-            {/* ✅ This button handles the entire Google flow safely — no popup issues */}
-            <div id="google-signin-btn" className="w-full" />
+          <div className="flex justify-center w-full">
+            <GoogleLogin
+              onSuccess={handleGoogleCallback}
+              onError={() => toast.error('Google sign-in failed')}
+              theme="outline"
+              size="large"
+              shape="rectangular"
+              text="continue_with"
+              width="320"
+            />
             {googleLoading && (
-              <div className="flex items-center justify-center gap-2 mt-2 text-sm text-surface-500">
+              <div className="flex items-center justify-center gap-2 mt-2 text-sm text-surface-500 absolute">
                 <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-                Signing in with Google...
+                Signing in...
               </div>
             )}
-          </>
+          </div>
         ) : (
           <div className="text-center text-sm text-surface-400 py-3 border border-surface-200 rounded-2xl">
             Google Sign-In not configured
@@ -181,34 +166,62 @@ export default function LoginPage() {
         </button>
       </form>
 
-      {/* Demo accounts */}
-      <div className="mt-5 p-4 bg-surface-50 rounded-2xl border border-surface-200">
-        <p className="text-xs font-semibold text-surface-500 mb-2">Demo Accounts</p>
-        <div className="space-y-1.5 text-xs text-surface-600">
-          {[
-            ['🧑', 'user@demo.com'],
-            ['🚗', 'driver@demo.com'],
-            ['🛡️', 'admin@demo.com'],
-          ].map(([icon, email]) => (
-            <div key={email} className="flex items-center justify-between">
-              <span>{icon} <span className="font-mono bg-surface-200 px-1.5 py-0.5 rounded">{email}</span></span>
-              <button
-                type="button"
-                onClick={() => { setForm({ email, password: 'demo1234' }); setUsePhone(false); }}
-                className="text-brand-500 font-semibold hover:text-brand-600 ml-2"
-              >
-                Use
-              </button>
-            </div>
-          ))}
-          <p className="text-surface-400 mt-1">Password: <span className="font-mono bg-surface-200 px-1.5 py-0.5 rounded">demo1234</span></p>
-        </div>
-      </div>
+
 
       <p className="text-center text-sm text-surface-500 mt-5">
         Don't have an account?{' '}
         <Link to="/auth/register" className="text-brand-500 hover:text-brand-600 font-semibold">Sign up free</Link>
       </p>
+
+      {/* Google Role Selection Modal */}
+      {googleCred && (
+        <div className="fixed inset-0 bg-surface-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-xl relative animate-in fade-in zoom-in-95 duration-200">
+            <button
+              onClick={() => setGoogleCred(null)}
+              className="absolute top-4 right-4 p-2 text-surface-400 hover:text-surface-600 hover:bg-surface-100 rounded-full transition-colors"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="text-center mb-6">
+              <h3 className="text-xl font-display font-bold text-surface-900">Complete Sign In</h3>
+              <p className="text-surface-500 text-sm mt-1">If you are new, what is your primary role?</p>
+            </div>
+
+            <div className="flex gap-3 mb-6">
+              {[
+                { value: 'user', icon: User, label: 'Rider' },
+                { value: 'driver', icon: Car, label: 'Driver' },
+                { value: 'both', icon: Map, label: 'Both' }
+              ].map(({ value, icon: Icon, label }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setGoogleRole(value)}
+                  className={`flex-1 p-3 rounded-2xl border-2 transition-all duration-200 text-center ${
+                    googleRole === value
+                      ? 'border-brand-500 bg-brand-50'
+                      : 'border-surface-200 bg-surface-50 hover:border-surface-300'
+                  }`}
+                >
+                  <Icon size={20} className={`mx-auto mb-2 ${googleRole === value ? 'text-brand-500' : 'text-surface-400'}`} />
+                  <p className={`font-semibold text-xs ${googleRole === value ? 'text-brand-700' : 'text-surface-700'}`}>{label}</p>
+                </button>
+              ))}
+            </div>
+
+            <button 
+              onClick={submitGoogleAuth} 
+              disabled={googleLoading} 
+              className="btn-primary w-full"
+            >
+              {googleLoading ? <span className="loading-dots"><span /><span /><span /></span> : 'Continue'}
+            </button>
+            <p className="text-xs text-center text-surface-400 mt-4">For existing accounts, your role will not be overwritten.</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -116,10 +116,18 @@ export default function MapView({
 
       // Draw route line
       if (pickup?.lat && destination?.lat) {
-        routeLayerRef.current = L.polyline([
-          [pickup.lat, pickup.lng],
-          [destination.lat, destination.lng]
-        ], { color: '#f97316', weight: 4, opacity: 0.8, dashArray: '8, 4' }).addTo(map);
+        try {
+          const res = await fetch(`https://api.openrouteservice.org/v2/directions/driving-car?api_key=${import.meta.env.VITE_ORS_API_KEY}&start=${pickup.lng},${pickup.lat}&end=${destination.lng},${destination.lat}`);
+          const data = await res.json();
+          if (data.features && data.features.length > 0) {
+            const coords = data.features[0].geometry.coordinates.map(c => [c[1], c[0]]); // convert [lng, lat] to [lat, lng]
+            routeLayerRef.current = L.polyline(coords, { color: '#f97316', weight: 4, opacity: 0.8 }).addTo(map);
+          } else {
+            routeLayerRef.current = L.polyline([[pickup.lat, pickup.lng], [destination.lat, destination.lng]], { color: '#f97316', weight: 4, opacity: 0.8, dashArray: '8, 4' }).addTo(map);
+          }
+        } catch (e) {
+          routeLayerRef.current = L.polyline([[pickup.lat, pickup.lng], [destination.lat, destination.lng]], { color: '#f97316', weight: 4, opacity: 0.8, dashArray: '8, 4' }).addTo(map);
+        }
       }
 
       // Driver location

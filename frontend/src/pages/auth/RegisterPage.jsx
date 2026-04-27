@@ -1,22 +1,11 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Car } from 'lucide-react';
-import { useGoogleLogin } from '@react-oauth/google';
+import { User, Mail, Phone, Lock, Eye, EyeOff, ArrowRight, Car, Map } from 'lucide-react';
+import { GoogleLogin } from '@react-oauth/google';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
 
-/* ── Google Sign-In helper ── */
-const loadGoogleScript = () => {
-  return new Promise((resolve) => {
-    if (window.google) return resolve(window.google);
-    const script = document.createElement('script');
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve(window.google);
-    document.head.appendChild(script);
-  });
-};
+/* ── Google Sign-In helper removed ── */
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -27,20 +16,7 @@ export default function RegisterPage() {
 
   const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-  useEffect(() => {
-    if (!GOOGLE_CLIENT_ID) return;
-    loadGoogleScript().then((google) => {
-      google.accounts.id.initialize({
-        client_id: GOOGLE_CLIENT_ID,
-        callback: handleGoogleCallback,
-        cancel_on_tap_outside: true,
-      });
-      google.accounts.id.renderButton(
-        document.getElementById('google-signup-btn'),
-        { theme: 'outline', size: 'large', width: '100%', shape: 'rectangular', text: 'continue_with' }
-      );
-    });
-  }, [GOOGLE_CLIENT_ID]);
+  // Removed manual google initialization
 
   const handleGoogleCallback = async (response) => {
     setGoogleLoading(true);
@@ -61,9 +37,6 @@ export default function RegisterPage() {
     if (!GOOGLE_CLIENT_ID) {
       toast.error('Google Sign-In not configured.');
       return;
-    }
-    if (window.google) {
-      window.google.accounts.id.prompt();
     }
   };
 
@@ -105,7 +78,8 @@ export default function RegisterPage() {
       <div className="flex gap-3 mb-6">
         {[
           { value: 'user', icon: User, label: 'Rider', desc: 'Book rides & deliveries' },
-          { value: 'driver', icon: Car, label: 'Driver', desc: 'Earn money driving' }
+          { value: 'driver', icon: Car, label: 'Driver', desc: 'Earn money driving' },
+          { value: 'both', icon: Map, label: 'Both', desc: 'Ride & drive' }
         ].map(({ value, icon: Icon, label, desc }) => (
           <button
             key={value}
@@ -175,12 +149,20 @@ export default function RegisterPage() {
       </div>
 
       {GOOGLE_CLIENT_ID ? (
-        <div>
-          <div id="google-signup-btn" className="w-full" />
+        <div className="flex justify-center w-full relative">
+          <GoogleLogin
+            onSuccess={handleGoogleCallback}
+            onError={() => toast.error('Google sign-up failed')}
+            theme="outline"
+            size="large"
+            shape="rectangular"
+            text="continue_with"
+            width="320"
+          />
           {googleLoading && (
-            <div className="flex items-center justify-center gap-2 mt-2 text-sm text-surface-500">
+            <div className="flex items-center justify-center gap-2 mt-2 text-sm text-surface-500 absolute">
               <div className="w-4 h-4 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
-              Signing up with Google...
+              Signing up...
             </div>
           )}
         </div>

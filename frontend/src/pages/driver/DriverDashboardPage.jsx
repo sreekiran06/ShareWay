@@ -174,20 +174,42 @@ export default function DriverDashboardPage() {
                   <h4 className="text-xs font-semibold text-gray-500 mb-2 uppercase tracking-wider">Passenger Requests</h4>
                   <div className="space-y-2">
                     {carpool.requests.map(req => (
-                      <div key={req._id} className="flex items-center justify-between bg-gray-50 p-3 rounded-xl">
-                        <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold overflow-hidden">
+                      <div key={req._id} className="flex flex-col sm:flex-row sm:items-start justify-between bg-gray-50 p-4 rounded-xl gap-3 border border-gray-100">
+                        <div className="flex items-start gap-3 w-full min-w-0">
+                          <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center text-gray-600 font-bold overflow-hidden flex-shrink-0 ring-2 ring-white">
                             {req.passenger?.avatar ? <img src={req.passenger.avatar} alt="Passenger" /> : req.passenger?.name?.charAt(0) || <User size={14}/>}
                           </div>
-                          <div>
-                            <p className="text-gray-800 text-sm font-medium">{req.passenger?.name}</p>
-                            <p className="text-gray-500 text-xs">{req.seatsRequested} seat(s) • {req.status}</p>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-gray-800 text-sm font-bold truncate">{req.passenger?.name}</p>
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${req.status === 'accepted' ? 'bg-emerald-100 text-emerald-700' : req.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-brand-100 text-brand-700'}`}>{req.status}</span>
+                            </div>
+                            <p className="text-gray-500 text-xs font-medium">{req.seatsRequested} seat(s) requested</p>
+                            
+                            {req.pickupLocation && req.dropoffLocation && (
+                              <div className="mt-3 pl-2.5 border-l-2 border-brand-200 space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <MapPin size={12} className="text-brand-500 flex-shrink-0" />
+                                  <p className="text-xs text-gray-600 truncate" title={req.pickupLocation}>
+                                    <span className="font-semibold text-gray-700 mr-1">Pickup:</span>
+                                    {req.pickupLocation.split(',').slice(0, 2).join(', ')}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <MapPin size={12} className="text-emerald-500 flex-shrink-0" />
+                                  <p className="text-xs text-gray-600 truncate" title={req.dropoffLocation}>
+                                    <span className="font-semibold text-gray-700 mr-1">Drop:</span>
+                                    {req.dropoffLocation.split(',').slice(0, 2).join(', ')}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
                         {req.status === 'pending' && carpool.status === 'active' && (
-                          <div className="flex gap-2">
-                            <button onClick={() => handleRejectRequest(carpool._id, req._id)} className="text-xs px-3 py-1.5 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100">Reject</button>
-                            <button onClick={() => handleAcceptRequest(carpool._id, req._id)} className="text-xs px-3 py-1.5 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600">Accept</button>
+                          <div className="flex gap-2 self-start mt-2 sm:mt-0 flex-shrink-0">
+                            <button onClick={() => handleRejectRequest(carpool._id, req._id)} className="text-xs font-semibold px-4 py-2 rounded-lg border border-gray-300 text-gray-600 hover:bg-gray-100 hover:text-red-600 transition-colors">Reject</button>
+                            <button onClick={() => handleAcceptRequest(carpool._id, req._id)} className="text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-colors shadow-sm shadow-emerald-500/20">Accept</button>
                           </div>
                         )}
                       </div>
