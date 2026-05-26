@@ -4,9 +4,12 @@
     "outputDirectory": "frontend/dist",
     "installCommand": "cd frontend && npm install",
     "framework": null,
-    "env": {
-        "VITE_API_URL": "https://shareway-6aeu.onrender.com/api",
-        "VITE_SOCKET_URL": "https://shareway-6aeu.onrender.com"
+    "build": {
+        "env": {
+            "VITE_API_URL": "https://shareway-6aeu.onrender.com/api",
+            "VITE_SOCKET_URL": "https://shareway-6aeu.onrender.com",
+            "VITE_GOOGLE_CLIENT_ID": "804042741041-pg20gmaqr5b5g9qbr586lng2vigjvo6m.apps.googleusercontent.com"
+        }
     },
     "headers": [
         {
