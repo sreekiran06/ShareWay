@@ -1,9 +1,11 @@
 const path = require("path");
 const dotenv = require("dotenv");
 
-// Load environment variables based on NODE_ENV
-const envFile = process.env.NODE_ENV === "production" ? ".env.production" : ".env.development";
-dotenv.config({ path: path.resolve(__dirname, "..", envFile) });
+// In production (Render), env vars are injected via the dashboard — no .env file needed.
+// In development, load from .env.development (never committed with real secrets).
+if (process.env.NODE_ENV !== "production") {
+    dotenv.config({ path: path.resolve(__dirname, "..", ".env.development") });
+}
 
 const express = require("express");
 const http = require("http");

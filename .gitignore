@@ -1,4 +1,17 @@
 node_modules/
+
+# Env files — secrets must never be committed
 .env
+.env.*
+# Allow only the example template
+!.env.example
+
 dist/
 build/
+
+# macOS
+.DS_Store
+
+# Logs
+logs/
+*.log
