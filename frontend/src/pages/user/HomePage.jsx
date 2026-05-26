@@ -4,8 +4,8 @@ import { Car, Search, Zap, Shield, TrendingUp } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 
 const quickActions = [
-  { to: '/driver/post-ride', icon: Car, label: 'Post Ride', desc: 'Offer a ride to others', color: 'brand', bg: 'bg-brand-500' },
-  { to: '/search-ride', icon: Search, label: 'Search Ride', desc: 'Find a ride to your destination', color: 'emerald', bg: 'bg-emerald-500' },
+  { id: 'post-ride', to: '/driver/post-ride', icon: Car, label: 'Post Ride', desc: 'Offer a ride to others', color: 'brand', bg: 'bg-brand-500' },
+  { id: 'search-ride', to: '/search-ride', icon: Search, label: 'Search Ride', desc: 'Find a ride to your destination', color: 'emerald', bg: 'bg-emerald-500' },
 ];
 
 const features = [
@@ -46,27 +46,21 @@ export default function HomePage() {
       <div>
         <h2 className="font-display font-bold text-lg text-surface-900 mb-3">Quick Actions</h2>
         <div className="grid grid-cols-2 gap-3">
-          {quickActions.map(({ id, to, icon: Icon, label, desc, bg }) => {
-            let finalTo = to;
-            if (id === 'post-ride') {
-              finalTo = (driverProfile?.status === 'approved') ? '/driver/post-ride' : '/driver/register';
-            }
-            return (
-              <Link
-                key={id}
-                to={finalTo}
-                className="card card-hover p-4 flex flex-col items-center text-center gap-3 cursor-pointer"
-              >
-                <div className={`w-12 h-12 ${bg} rounded-2xl flex items-center justify-center shadow-lg`}>
-                  <Icon size={22} className="text-white" />
-                </div>
-                <div>
-                  <p className="font-semibold text-surface-900 text-sm">{label}</p>
-                  <p className="text-xs text-surface-400 mt-0.5">{desc}</p>
-                </div>
-              </Link>
-            )
-          })}
+          {quickActions.map(({ id, to, icon: Icon, label, desc, bg }) => (
+            <Link
+              key={id}
+              to={to}
+              className="card card-hover p-4 flex flex-col items-center text-center gap-3 cursor-pointer"
+            >
+              <div className={`w-12 h-12 ${bg} rounded-2xl flex items-center justify-center shadow-lg`}>
+                <Icon size={22} className="text-white" />
+              </div>
+              <div>
+                <p className="font-semibold text-surface-900 text-sm">{label}</p>
+                <p className="text-xs text-surface-400 mt-0.5">{desc}</p>
+              </div>
+            </Link>
+          ))}
         </div>
       </div>
 
